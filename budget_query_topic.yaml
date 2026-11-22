@@ -1,0 +1,203 @@
+kind: AdaptiveDialog
+inputs:
+  - kind: AutomaticTaskInput
+    propertyName: department
+    description: Department name, for example Marketing. Leave blank to include all departments.
+    shouldPromptUser: false
+    inputSettings:
+      defaultValue: =Blank()
+
+  - kind: AutomaticTaskInput
+    propertyName: category
+    description: Budget category, for example Travel. Leave blank to include all categories.
+    shouldPromptUser: false
+    inputSettings:
+      defaultValue: =Blank()
+
+  - kind: AutomaticTaskInput
+    propertyName: month_from
+    description: First month of the period, written as YYYY-MM, for example 2026-03. Leave blank if the user gives no start month.
+    shouldPromptUser: false
+    inputSettings:
+      defaultValue: =Blank()
+
+  - kind: AutomaticTaskInput
+    propertyName: month_to
+    description: Last month of the period, written as YYYY-MM, for example 2026-05. If the user asks about a single month, use the same value as month_from. Leave blank if the user gives no end month.
+    shouldPromptUser: false
+    inputSettings:
+      defaultValue: =Blank()
+
+modelDescription: Returns the total budget from the company's budget vs actual data, optionally filtered by department, category and month range. Use this for any question about budget totals.
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  intent: {}
+  actions:
+    - kind: InvokeFlowAction
+      id: invokeFlowAction_4sY6QT
+      input: {}
+      output:
+        binding:
+          rows_json: Topic.rows_json
+
+      flowId: f4a80e16-bce5-f111-b1ec-70a8a50ddf97
+
+    - kind: ParseValue
+      id: UWvCiA
+      variable: Topic.rows
+      valueType:
+        kind: Table
+        properties:
+          Actual: Number
+          Budget: Number
+          Category: String
+          Department: String
+          Month: String
+
+      value: =Topic.rows_json
+
+    - kind: SetMultipleVariables
+      id: setVariable_5Nqzu9
+      assignments:
+        - variable: Topic.from_key
+          value: =If(IsBlank(Topic.month_from), 0, Value(Substitute(Topic.month_from, "-", "")))
+
+        - variable: Topic.to_key
+          value: =If(IsBlank(Topic.month_to), 999999, Value(Substitute(Topic.month_to, "-", "")))
+
+        - variable: Topic.eff_from
+          value: =If(IsBlank(Topic.month_from), Min(Topic.rows, Value(Substitute(Month, "-", ""))), Value(Substitute(Topic.month_from, "-", "")))
+
+        - variable: Topic.eff_to
+          value: =If(IsBlank(Topic.month_to), Max(Topic.rows, Value(Substitute(Month, "-", ""))), Value(Substitute(Topic.month_to, "-", "")))
+
+    - kind: ConditionGroup
+      id: conditionGroup_dv5ynd
+      conditions:
+        - id: conditionItem_YyYNir
+          condition: =!IsBlank(Topic.department) && CountRows(Filter(Topic.rows, Lower(Department) = Lower(Topic.department))) = 0
+          actions:
+            - kind: SetVariable
+              id: setVariable_G3zmUJ
+              variable: Topic.available_depts
+              value: =Concat(Distinct(Topic.rows, Department), Value, ", ")
+
+            - kind: SendActivity
+              id: sendActivity_XxqTqz
+              activity: "There is no budget data for {Topic.department}. Available departments: {Topic.available_depts}"
+
+            - kind: EndDialog
+              id: DsLwN4
+
+      elseActions:
+        - kind: ConditionGroup
+          id: conditionGroup_aoEOI6
+          conditions:
+            - id: conditionItem_H2EuFz
+              condition: =!IsBlank(Topic.category) && CountRows(Filter(Topic.rows, (IsBlank(Topic.department) || Lower(Department) = Lower(Topic.department)) && Lower(Category) = Lower(Topic.category))) = 0
+              actions:
+                - kind: SetMultipleVariables
+                  id: setVariable_yehmUY
+                  assignments:
+                    - variable: Topic.dept_scope
+                      value: =If(IsBlank(Topic.department), "any department", Topic.department)
+
+                    - variable: Topic.available_cats
+                      value: =Concat(Distinct(Filter(Topic.rows, IsBlank(Topic.department) || Lower(Department) = Lower(Topic.department)), Category), Value, ", ")
+
+                - kind: SendActivity
+                  id: sendActivity_qd99gz
+                  activity: "There is no {Topic.category} budget data for {Topic.dept_scope}. Available categories: {Topic.available_cats}"
+
+                - kind: EndDialog
+                  id: FkTTec
+
+          elseActions:
+            - kind: SetMultipleVariables
+              id: setVariable_C00cfF
+              assignments:
+                - variable: Topic.requested_count
+                  value: =(Int(Topic.eff_to / 100) * 12 + Mod(Topic.eff_to, 100)) - (Int(Topic.eff_from / 100) * 12 + Mod(Topic.eff_from, 100)) + 1
+
+                - variable: Topic.available_count
+                  value: =CountRows(Distinct(Filter(Topic.rows, Value(Substitute(Month, "-", "")) >= Topic.eff_from && Value(Substitute(Month, "-", "")) <= Topic.eff_to), Month))
+
+                - variable: Topic.available_in_range
+                  value: =Concat(Distinct(Filter(Topic.rows, Value(Substitute(Month, "-", "")) >= Topic.eff_from && Value(Substitute(Month, "-", "")) <= Topic.eff_to), Month), Value, ", ")
+
+                - variable: Topic.asked_text
+                  value: =Coalesce(Topic.month_from, "the earliest month") & " to " & Coalesce(Topic.month_to, "the latest month")
+
+            - kind: ConditionGroup
+              id: conditionGroup_0u4uAp
+              conditions:
+                - id: conditionItem_a7VinB
+                  condition: =(!IsBlank(Topic.month_from) || !IsBlank(Topic.month_to)) && CountRows(Filter(Topic.rows, Value(Substitute(Month, "-", "")) >= Topic.from_key && Value(Substitute(Month, "-", "")) <= Topic.to_key)) = 0
+                  actions:
+                    - kind: SetMultipleVariables
+                      id: setVariable_PBAKMf
+                      assignments:
+                        - variable: Topic.period_text
+                          value: =Coalesce(Topic.month_from, "start") & " to " & Coalesce(Topic.month_to, "end")
+
+                        - variable: Topic.available_months
+                          value: =Concat(Distinct(Topic.rows, Month), Value, ", ")
+
+                    - kind: SendActivity
+                      id: sendActivity_a0b7pu
+                      activity: "`There is no budget data for {Topic.period_text}. Data is available for: {Topic.available_months}`"
+
+                    - kind: EndDialog
+                      id: IgT8Cl
+
+              elseActions:
+                - kind: ConditionGroup
+                  id: conditionGroup_W9yfv2
+                  conditions:
+                    - id: conditionItem_TPzy0X
+                      condition: =Topic.available_count < Topic.requested_count
+                      actions:
+                        - kind: SendActivity
+                          id: sendActivity_xyhU42
+                          activity: You asked about {Topic.asked_text}. Data is only available for {Topic.available_in_range}, so the figure below covers those months only.
+
+    - kind: SetMultipleVariables
+      id: setVariable_JsyVwK
+      assignments:
+        - variable: Topic.total_budget
+          value: =Sum(Filter(Topic.rows, (IsBlank(Topic.department) || Lower(Department) = Lower(Topic.department)) && (IsBlank(Topic.category) || Lower(Category) = Lower(Topic.category)) && Value(Substitute(Month, "-", "")) >= Topic.from_key && Value(Substitute(Month, "-", "")) <= Topic.to_key), Budget)
+
+        - variable: Topic.total_budget_text
+          value: "=Text(Sum(Filter(Topic.rows, (IsBlank(Topic.department) || Lower(Department) = Lower(Topic.department)) && (IsBlank(Topic.category) || Lower(Category) = Lower(Topic.category)) && Value(Substitute(Month, \"-\", \"\")) >= Topic.from_key && Value(Substitute(Month, \"-\", \"\")) <= Topic.to_key), Budget), \"#,##0\")"
+
+        - variable: Topic.scope_text
+          value: =If(IsBlank(Topic.department), "all departments", Topic.department) & " / " & If(IsBlank(Topic.category), "all categories", Topic.category) & " / " & If(IsBlank(Topic.month_from) && IsBlank(Topic.month_to), "all months", Coalesce(Topic.month_from, "start") & " to " & Coalesce(Topic.month_to, "end"))
+
+    - kind: SendActivity
+      id: sendActivity_rES70p
+      activity: "Total budget for {Topic.scope_text} : {Topic.total_budget_text}"
+
+inputType:
+  properties:
+    category:
+      displayName: category
+      description: Budget category, for example Travel. Leave blank to include all categories.
+      type: String
+
+    department:
+      displayName: department
+      description: Department name, for example Marketing. Leave blank to include all departments.
+      type: String
+
+    month_from:
+      displayName: month_from
+      description: First month of the period, written as YYYY-MM, for example 2026-03. Leave blank if the user gives no start month.
+      type: String
+
+    month_to:
+      displayName: month_to
+      description: Last month of the period, written as YYYY-MM, for example 2026-05. If the user asks about a single month, use the same value as month_from. Leave blank if the user gives no end month.
+      type: String
+
+outputType: {}
