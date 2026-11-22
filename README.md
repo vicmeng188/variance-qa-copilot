@@ -99,6 +99,7 @@ Building the calculation logic as flowchart nodes took far more effort than the 
 - `reconcile.py`: checks the Power Query merge against the original CSV files
 - `expected.py`: calculates the expected answers from the original CSV files
 - `BudgetActual.xlsx`: the merged data table
+- The two Python scripts read the original monthly CSV files from the [variance-qa-agent](https://github.com/vicmeng188/variance-qa-agent) repository. Clone both repositories into the same folder to run them.
 
 ## How this was built
 
