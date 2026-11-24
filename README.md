@@ -78,6 +78,8 @@ Each question was run once in the Copilot Studio test pane after each change, an
 - **Defaults to change.** Topic inputs ask the user a follow-up question by default and hand over to a human if no value is found. For optional inputs both had to be turned off.
 - **The Excel connector** returns dates as Excel serial numbers unless the date format is set to ISO 8601, and returns numbers as text.
 - **Reading the topic's YAML caught a stale description.** The topic description still said "filtered by department" after category and month filters had been added. The model uses this description to decide when to use the topic.
+- **General knowledge was on.** The agent's settings had `useModelKnowledge: true`. The numbers come from the flow and Power Fx, so the impact was limited, but for an agent that should only answer from company data, general knowledge should be off. My later RAG project ([finance-policy-rag](https://github.com/vicmeng188/finance-policy-rag)) turns web search off from the start.
+- **Naming.** The agent flow was saved as "Untitled", and the topic shown as "Budget Query" still has the internal name `TotalBudgetTest` from early testing. Neither affects behaviour, but both make the solution harder for someone else to maintain. I now name flows and topics when I create them.
 
 ## What I would do differently in a real project
 
@@ -100,6 +102,12 @@ Building the calculation logic as flowchart nodes took far more effort than the 
 - `expected.py`: calculates the expected answers from the original CSV files
 - `BudgetActual.xlsx`: the merged data table
 - The two Python scripts read the original monthly CSV files from the [variance-qa-agent](https://github.com/vicmeng188/variance-qa-agent) repository. Clone both repositories into the same folder to run them.
+## Agent flow definition
+
+`agent_flow_redacted.json` is the agent flow that reads the budget data, exported from Copilot Studio as part of a solution (Nov 2026). Flow: manual trigger (called by the agent) → **List rows present in a table** (Excel Online for Business, OneDrive) → **Select** (keeps the needed columns) → **Respond to the agent** (returns the rows as JSON text). The OneDrive drive, file and table IDs were replaced with placeholders before publishing. The full solution export is kept privately, because it is only useful for re-importing into the original tenant.
+
+This agent was built in Copilot Studio's classic experience (topics, Power Fx, agent flows).
+- `reconcile.py` and `expected.py` read the original monthly CSV files from the [variance-qa-agent](https://github.com/vicmeng188/variance-qa-agent) repository. To run them, clone both repositories into the same parent folder.
 
 ## How this was built
 
