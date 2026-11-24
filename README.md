@@ -107,7 +107,6 @@ Building the calculation logic as flowchart nodes took far more effort than the 
 `agent_flow_redacted.json` is the agent flow that reads the budget data, exported from Copilot Studio as part of a solution (Nov 2026). Flow: manual trigger (called by the agent) → **List rows present in a table** (Excel Online for Business, OneDrive) → **Select** (keeps the needed columns) → **Respond to the agent** (returns the rows as JSON text). The OneDrive drive, file and table IDs were replaced with placeholders before publishing. The full solution export is kept privately, because it is only useful for re-importing into the original tenant.
 
 This agent was built in Copilot Studio's classic experience (topics, Power Fx, agent flows).
-- `reconcile.py` and `expected.py` read the original monthly CSV files from the [variance-qa-agent](https://github.com/vicmeng188/variance-qa-agent) repository. To run them, clone both repositories into the same parent folder.
 
 ## How this was built
 
